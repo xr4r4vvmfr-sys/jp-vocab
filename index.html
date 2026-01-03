@@ -200,6 +200,7 @@ textarea { min-height: 140px; resize: none; }
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
         <div style="font-size: 13px; color: var(--accent); cursor: pointer; font-weight: 600;" onclick="toggleAllVisibleChecks(true)">전체 선택</div>
         <div style="font-size: 13px; color: var(--secondary); cursor: pointer;" onclick="toggleAllVisibleChecks(false)">선택 해제</div>
+        <div style="font-size: 13px; color: #ff9500; cursor: pointer; font-weight: 600;" id="rangeModeBtn" onclick="toggleRangeMode()">범위 선택: 끄기</div>
       </div>
 
       <div id="batchEditBar" style="display: none; background: #f2f2f7; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid var(--divider);">
@@ -280,6 +281,19 @@ let quizIndex = parseInt(localStorage.getItem("quizIndex")) || 0;
 let quizMode = "ko-jp";
 let isComposing = false;
 let lastChecked = null;
+
+  let isRangeMode = false;
+let firstCheckedIndex = null;
+
+function toggleRangeMode() {
+  isRangeMode = !isRangeMode;
+  const btn = document.getElementById("rangeModeBtn");
+  btn.innerText = isRangeMode ? "범위 선택: 켜짐" : "범위 선택: 끄기";
+  btn.style.color = isRangeMode ? "#007aff" : "#ff9500";
+  if (!isRangeMode) firstCheckedIndex = null;
+}
+
+  
 
 // 탭 전환
 document.querySelectorAll(".tab").forEach(tab => {
@@ -475,14 +489,43 @@ function saveQuizState() {
 function toggleAllVisibleChecks(s) { document.querySelectorAll(".word-checker").forEach(c => c.checked = s); updateBatchBar(); }
 
 function handleCheck(e, cb) {
-  if (e.shiftKey && lastChecked) {
-    let inB = false;
-    document.querySelectorAll(".word-checker").forEach(c => {
-      if (c === cb || c === lastChecked) inB = !inB;
-      if (inB) c.checked = lastChecked.checked;
-    });
+ const currentIndex = parseInt(cb.dataset.index, 10);
+
+  if (isRangeMode) {
+    if (firstCheckedIndex === null) {
+      // 첫 번째 선택
+      firstCheckedIndex = currentIndex;
+      cb.checked = true;
+      // 핸드폰에서도 알 수 있게 살짝 알림을 줍니다.
+      // alert("범위의 끝 지점을 선택하세요."); 
+    } else {
+      // 두 번째 선택 (범위 완성)
+      const start = Math.min(firstCheckedIndex, currentIndex);
+      const end = Math.max(firstCheckedIndex, currentIndex);
+      
+      // 화면에 보이는 모든 체크박스를 가져와서 범위 안에 있으면 체크!
+      const checkers = document.querySelectorAll(".word-checker");
+      checkers.forEach(c => {
+        const idx = parseInt(c.dataset.index, 10);
+        if (idx >= start && idx <= end) {
+          c.checked = true;
+        }
+      });
+      
+      // 범위 선택 후 초기화
+      firstCheckedIndex = null;
+    }
+  } else {
+    // 일반 단일 선택 (기존 로직)
+    if (e.shiftKey && lastChecked) {
+      let inB = false;
+      document.querySelectorAll(".word-checker").forEach(c => {
+        if (c === cb || c === lastChecked) inB = !inB;
+        if (inB) c.checked = lastChecked.checked;
+      });
+    }
+    lastChecked = cb;
   }
-  lastChecked = cb;
   updateBatchBar();
 }
 
