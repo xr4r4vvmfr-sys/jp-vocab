@@ -2,9 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>일본어 단어장</title><link rel="manifest" href="manifest.json">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+<title>일본어 단어장</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <style>
@@ -184,16 +185,21 @@ textarea { min-height: 140px; resize: none; }
       <input type="file" id="fileInput" accept=".json" style="display:none">
       <div class="divider"></div>
 
-      <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-       <div style="margin-bottom: 15px;">
-  <input type="text" id="wordSearch" onkeyup="renderList()" placeholder="🔍 단어 또는 뜻 검색" 
-    style="width: 100%; padding: 12px 15px; font-size: 15px; border: 1px solid #ddd; border-radius: 12px; outline: none; box-sizing: border-box; transition: border-color 0.2s; background: #fff; -webkit-appearance: none;">
-</div>
-        <select id="listGroupFilter" onchange="renderList()" style="flex: 1; border-radius: 8px; border: 1px solid var(--divider); padding: 8px;">
-          <option value="all">전체 리스트 보기</option>
+      <div style="display: flex; gap: 8px; margin-bottom: 15px; align-items: stretch;">
+        <input type="text" id="wordSearch" onkeyup="renderList()" placeholder="🔍 검색" 
+          style="flex: 2; padding: 10px 12px; font-size: 14px; border: 1px solid var(--divider); border-radius: 10px; background: #fff; outline: none; -webkit-appearance: none;">
+        
+        <select id="listGroupFilter" onchange="renderList()" style="flex: 1.2; border-radius: 10px; border: 1px solid var(--divider); padding: 8px; font-size: 13px; background: #fff;">
+          <option value="all">전체 레벨</option>
+          <option value="JLPT 5">JLPT 5</option>
+          <option value="JLPT 4">JLPT 4</option>
+          <option value="JLPT 3">JLPT 3</option>
+          <option value="JLPT 2">JLPT 2</option>
+          <option value="JLPT 1">JLPT 1</option>
         </select>
-        <select id="listPosFilter" onchange="renderList()" style="flex: 1; border-radius: 8px; border: 1px solid var(--divider); padding: 8px;">
-          <option value="all">모든 품사</option>
+
+        <select id="listPosFilter" onchange="renderList()" style="flex: 1; border-radius: 10px; border: 1px solid var(--divider); padding: 8px; font-size: 13px; background: #fff;">
+          <option value="all">품사</option>
           <option value="명사">명사</option>
           <option value="동사">동사</option>
           <option value="형용사">형용사</option>
@@ -278,6 +284,11 @@ textarea { min-height: 140px; resize: none; }
   </div>
 </div>
 
+<div id="scrollButtons" style="position: fixed; bottom: 80px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000;">
+  <div onclick="window.scrollTo({top: 0, behavior: 'smooth'})" style="width: 44px; height: 44px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-weight: bold; cursor: pointer; opacity: 0.9;">↑</div>
+  <div onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})" style="width: 44px; height: 44px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-weight: bold; cursor: pointer; opacity: 0.9;">↓</div>
+</div>
+
 <script>
 let words = JSON.parse(localStorage.getItem("jpWords")) || [];
 let quizQueue = JSON.parse(localStorage.getItem("quizQueue")) || [];
@@ -285,8 +296,7 @@ let quizIndex = parseInt(localStorage.getItem("quizIndex")) || 0;
 let quizMode = "ko-jp";
 let isComposing = false;
 let lastChecked = null;
-
-  let isRangeMode = false;
+let isRangeMode = false;
 let firstCheckedIndex = null;
 
 function toggleRangeMode() {
@@ -296,8 +306,6 @@ function toggleRangeMode() {
   btn.style.color = isRangeMode ? "#007aff" : "#ff9500";
   if (!isRangeMode) firstCheckedIndex = null;
 }
-
-  
 
 // 탭 전환
 document.querySelectorAll(".tab").forEach(tab => {
@@ -315,18 +323,15 @@ document.querySelectorAll(".tab").forEach(tab => {
   });
 });
 
-// 단어 추가 (failCount 추가됨)
 function addBulkWords() {
   const bulkInput = document.getElementById("bulkInput");
   const lines = bulkInput.value.split("\n");
   let added = 0;
-
   lines.forEach(line => {
     const clean = line.trim();
     if (!clean) return;
     const parts = clean.includes("=") ? clean.split("=") : clean.split("/");
     if (parts.length < 2) return;
-
     const ko = parts[0].trim();
     const jp = parts[1].trim();
     if (ko && jp) {
@@ -334,7 +339,6 @@ function addBulkWords() {
       added++;
     }
   });
-
   if (added) {
     localStorage.setItem("jpWords", JSON.stringify(words));
     bulkInput.value = "";
@@ -344,15 +348,21 @@ function addBulkWords() {
   }
 }
 
-// 리스트 렌더링
+// 리스트 렌더링 (검색 기능 포함)
 function renderList() {
   const listContainer = document.getElementById("wordList");
   const gf = document.getElementById("listGroupFilter").value;
   const pf = document.getElementById("listPosFilter").value;
+  const searchTerm = document.getElementById("wordSearch").value.toLowerCase().trim();
+  
   listContainer.innerHTML = "";
-  updateListGroupFilter();
 
   words.forEach((w, i) => {
+    // 검색 필터링
+    const matchesSearch = w.ko.toLowerCase().includes(searchTerm) || w.jp.toLowerCase().includes(searchTerm);
+    if (!matchesSearch) return;
+
+    // 그룹/품사 필터링
     const matchG = (gf === "all") || (w.group || "JLPT 5") === gf;
     const matchP = (pf === "all") || (w.pos || "명사") === pf;
     if (!matchG || !matchP) return;
@@ -390,26 +400,12 @@ function renderList() {
   updateBatchBar();
 }
 
-function updateListGroupFilter() {
-  const sel = document.getElementById("listGroupFilter");
-  const curr = sel.value;
-  const groups = ["JLPT 5", "JLPT 4", "JLPT 3", "JLPT 2", "JLPT 1"];
-  sel.innerHTML = '<option value="all">전체 리스트 보기</option>';
-  groups.forEach(g => {
-    const opt = document.createElement("option");
-    opt.value = g; opt.innerText = g;
-    if (g === curr) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
 function editWord(i, k, v) { words[i][k] = v; localStorage.setItem("jpWords", JSON.stringify(words)); }
 
 function deleteWord(i) {
   if(confirm("삭제할까요?")) { words.splice(i, 1); localStorage.setItem("jpWords", JSON.stringify(words)); renderList(); startQuiz(); }
 }
 
-// 퀴즈 
 const quizAns = document.getElementById("quizAnswer");
 quizAns.addEventListener("compositionstart", () => isComposing = true);
 quizAns.addEventListener("compositionend", () => isComposing = false);
@@ -418,13 +414,11 @@ quizAns.addEventListener("keydown", e => {
   const curr = quizQueue[quizIndex];
   if (!curr) return;
   const correct = quizMode === "ko-jp" ? curr.jp : curr.ko;
-  
   if (quizAns.value.trim() === correct) {
     document.getElementById("quizResult").innerText = "정답! (正解！)";
     quizIndex++;
     setTimeout(() => { renderCurrentQuiz(); }, 600);
   } else {
-    // 틀렸을 때 failCount 증가
     const original = words.find(w => w.ko === curr.ko && w.jp === curr.jp);
     if (original) {
       original.failCount = (original.failCount || 0) + 1;
@@ -458,69 +452,44 @@ function renderCurrentQuiz(reset=true) {
   const qBox = document.getElementById("quizQuestion");
   const pBox = document.getElementById("quizProgress");
   const rBox = document.getElementById("quizResult");
-
-  if (!quizQueue.length) { 
-    qBox.innerText = "단어를 추가하세요"; 
-    pBox.innerText = "0 / 0"; 
-    return; 
-  }
-
-  // 퀴즈가 다 끝났는지 확인
+  if (!quizQueue.length) { qBox.innerText = "단어를 추가하세요"; pBox.innerText = "0 / 0"; return; }
   if (quizIndex >= quizQueue.length) { 
     qBox.innerText = "퀴즈 완료! 🎉"; 
     pBox.innerText = `${quizQueue.length}/${quizQueue.length}`;
-    // 다 풀었으니 저장소 비우기
     localStorage.removeItem("quizQueue");
     localStorage.removeItem("quizIndex");
     return; 
   }
-
   const curr = quizQueue[quizIndex];
   qBox.innerText = quizMode === "ko-jp" ? curr.ko : curr.jp;
   pBox.innerText = `진행: ${quizIndex + 1} / ${quizQueue.length}`;
-  
   if (reset) { rBox.innerText = ""; quizAns.value = ""; }
-
-  // ★ 현재 상태를 저장소에 기록합니다! (껐다 켜도 기억하도록)
   saveQuizState();
 }
+
 function saveQuizState() {
   localStorage.setItem("quizQueue", JSON.stringify(quizQueue));
   localStorage.setItem("quizIndex", quizIndex);
 }
 
-// 일괄 처리 
 function toggleAllVisibleChecks(s) { document.querySelectorAll(".word-checker").forEach(c => c.checked = s); updateBatchBar(); }
 
 function handleCheck(e, cb) {
- const currentIndex = parseInt(cb.dataset.index, 10);
-
+  const currentIndex = parseInt(cb.dataset.index, 10);
   if (isRangeMode) {
     if (firstCheckedIndex === null) {
-      // 첫 번째 선택
       firstCheckedIndex = currentIndex;
       cb.checked = true;
-      // 핸드폰에서도 알 수 있게 살짝 알림을 줍니다.
-      // alert("범위의 끝 지점을 선택하세요."); 
     } else {
-      // 두 번째 선택 (범위 완성)
       const start = Math.min(firstCheckedIndex, currentIndex);
       const end = Math.max(firstCheckedIndex, currentIndex);
-      
-      // 화면에 보이는 모든 체크박스를 가져와서 범위 안에 있으면 체크!
-      const checkers = document.querySelectorAll(".word-checker");
-      checkers.forEach(c => {
+      document.querySelectorAll(".word-checker").forEach(c => {
         const idx = parseInt(c.dataset.index, 10);
-        if (idx >= start && idx <= end) {
-          c.checked = true;
-        }
+        if (idx >= start && idx <= end) c.checked = true;
       });
-      
-      // 범위 선택 후 초기화
       firstCheckedIndex = null;
     }
   } else {
-    // 일반 단일 선택 (기존 로직)
     if (e.shiftKey && lastChecked) {
       let inB = false;
       document.querySelectorAll(".word-checker").forEach(c => {
@@ -586,7 +555,6 @@ fileInput.addEventListener("change", e => {
 
 document.getElementById("quizModeSelect").addEventListener("change", (e) => { quizMode = e.target.value; renderCurrentQuiz(false); });
 
-// 초기 로드
 if (words.length > 0) { renderList(); renderCurrentQuiz(false); }
 </script>
 </body>
