@@ -185,7 +185,10 @@ textarea { min-height: 140px; resize: none; }
       <div class="divider"></div>
 
       <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-        <input type="text" id="wordSearch" onkeyup="renderList()" placeholder="🔍 단어 또는 뜻 검색 (800개 중 찾기)" style="background: #efeff4; border: none; border-radius: 10px; padding: 12px 15px; margin-bottom: 15px; width: 100%; font-size: 16px; outline: none; -webkit-appearance: none;">
+       <div style="margin-bottom: 15px;">
+  <input type="text" id="wordSearch" onkeyup="renderList()" placeholder="🔍 단어 또는 뜻 검색" 
+    style="width: 100%; padding: 12px 15px; font-size: 15px; border: 1px solid #ddd; border-radius: 12px; outline: none; box-sizing: border-box; transition: border-color 0.2s; background: #fff; -webkit-appearance: none;">
+</div>
         <select id="listGroupFilter" onchange="renderList()" style="flex: 1; border-radius: 8px; border: 1px solid var(--divider); padding: 8px;">
           <option value="all">전체 리스트 보기</option>
         </select>
