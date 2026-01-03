@@ -1,21 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-
-
-<link rel="manifest" href="manifest.json">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  
-  <script>
-    // 앱으로 설치 가능하게 등록하는 코드
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
-    }
-  </script>
-</head>
-
 <meta charset="UTF-8">
-<title>Japanese Vocabulary - Final</title>
+<title>Japanese Vocabulary - Smart</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <style>
 :root {
@@ -187,8 +175,10 @@ textarea { min-height: 140px; resize: none; }
 
   <div class="section" id="list">
     <div class="card">
-      <div class="button" onclick="exportWords()">단어 파일로 저장</div>
-      <div class="button" onclick="fileInput.click()">단어 파일 불러오기</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="button" onclick="exportWords()" style="border: 1px solid var(--divider); border-radius: 10px; padding: 10px 0;">단어 파일로 저장</div>
+        <div class="button" onclick="fileInput.click()" style="border: 1px solid var(--divider); border-radius: 10px; padding: 10px 0;">단어 파일 불러오기</div>
+      </div>
       <input type="file" id="fileInput" accept=".json" style="display:none">
       <div class="divider"></div>
 
@@ -270,7 +260,13 @@ textarea { min-height: 140px; resize: none; }
       <div class="result" id="quizResult"></div>
       <div class="progress" id="quizProgress"></div>
       <div class="divider"></div>
-      <div class="secondary-button" onclick="startQuiz()">↻ 퀴즈 새로 시작</div>
+      
+      <div class="secondary-button" onclick="startQuiz()" style="margin: 8px auto; width: 80%;">
+        ↻ 퀴즈 새로 시작
+      </div>
+      <div class="secondary-button" onclick="startFailQuiz()" style="margin: 8px auto; width: 80%; background: #ffe5e5; color: #ff3b30; border: 1px solid #ff3b30;">
+        🔥 오답 노트 퀴즈 (틀린 단어만)
+      </div>
     </div>
   </div>
 </div>
@@ -299,7 +295,7 @@ document.querySelectorAll(".tab").forEach(tab => {
   });
 });
 
-// 단어 추가
+// 단어 추가 (failCount 추가됨)
 function addBulkWords() {
   const bulkInput = document.getElementById("bulkInput");
   const lines = bulkInput.value.split("\n");
@@ -314,7 +310,7 @@ function addBulkWords() {
     const ko = parts[0].trim();
     const jp = parts[1].trim();
     if (ko && jp) {
-      words.push({ ko, jp, group: "JLPT 5", pos: "명사" });
+      words.push({ ko, jp, group: "JLPT 5", pos: "명사", failCount: 0 });
       added++;
     }
   });
@@ -331,15 +327,15 @@ function addBulkWords() {
 // 리스트 렌더링
 function renderList() {
   const listContainer = document.getElementById("wordList");
-  const groupFilter = document.getElementById("listGroupFilter").value;
-  const posFilter = document.getElementById("listPosFilter").value;
+  const gf = document.getElementById("listGroupFilter").value;
+  const pf = document.getElementById("listPosFilter").value;
   listContainer.innerHTML = "";
   updateListGroupFilter();
 
   words.forEach((w, i) => {
-    const matchGroup = (groupFilter === "all") || (w.group || "JLPT 5") === groupFilter;
-    const matchPos = (posFilter === "all") || (w.pos || "명사") === posFilter;
-    if (!matchGroup || !matchPos) return;
+    const matchG = (gf === "all") || (w.group || "JLPT 5") === gf;
+    const matchP = (pf === "all") || (w.pos || "명사") === pf;
+    if (!matchG || !matchP) return;
 
     const div = document.createElement("div");
     div.className = "word-item";
@@ -359,6 +355,7 @@ function renderList() {
           <option value="형용사" ${w.pos==='형용사'?'selected':''}>형용사</option>
           <option value="부사" ${w.pos==='부사'?'selected':''}>부사</option>
         </select>
+        ${w.failCount > 0 ? `<span style="font-size: 10px; color: #ff3b30;">🔥 ${w.failCount}</span>` : ''}
       </div>
       <div></div>
       <input type="text" value="${w.ko}" onchange="editWord(${i}, 'ko', this.value)">
@@ -374,82 +371,63 @@ function renderList() {
 }
 
 function updateListGroupFilter() {
-  const filterSelect = document.getElementById("listGroupFilter");
-  const current = filterSelect.value;
+  const sel = document.getElementById("listGroupFilter");
+  const curr = sel.value;
   const groups = ["JLPT 5", "JLPT 4", "JLPT 3", "JLPT 2", "JLPT 1"];
-  filterSelect.innerHTML = '<option value="all">전체 리스트 보기</option>';
+  sel.innerHTML = '<option value="all">전체 리스트 보기</option>';
   groups.forEach(g => {
     const opt = document.createElement("option");
     opt.value = g; opt.innerText = g;
-    if (g === current) opt.selected = true;
-    filterSelect.appendChild(opt);
+    if (g === curr) opt.selected = true;
+    sel.appendChild(opt);
   });
 }
 
-function editWord(i, key, val) {
-  words[i][key] = val;
-  localStorage.setItem("jpWords", JSON.stringify(words));
-}
+function editWord(i, k, v) { words[i][k] = v; localStorage.setItem("jpWords", JSON.stringify(words)); }
 
 function deleteWord(i) {
-  if(confirm("이 단어를 삭제할까요?")) {
-    words.splice(i, 1);
-    localStorage.setItem("jpWords", JSON.stringify(words));
-    renderList();
-    startQuiz();
-  }
+  if(confirm("삭제할까요?")) { words.splice(i, 1); localStorage.setItem("jpWords", JSON.stringify(words)); renderList(); startQuiz(); }
 }
 
-// 퀴즈 상태 관리
-function saveQuizState() {
-  localStorage.setItem("quizQueue", JSON.stringify(quizQueue));
-  localStorage.setItem("quizIndex", quizIndex);
-  localStorage.setItem("quizMode", quizMode);
-  localStorage.setItem("quizGroupFilter", document.getElementById("quizGroupFilter").value);
-  localStorage.setItem("quizPosFilter", document.getElementById("quizPosFilter").value);
-}
-
-function loadQuizState() {
-  const q = localStorage.getItem("quizQueue");
-  const i = localStorage.getItem("quizIndex");
-  const m = localStorage.getItem("quizMode");
-  const gf = localStorage.getItem("quizGroupFilter");
-  const pf = localStorage.getItem("quizPosFilter");
-  if (q && i !== null) {
-    quizQueue = JSON.parse(q);
-    quizIndex = parseInt(i, 10);
-    if (m) { quizMode = m; document.getElementById("quizModeSelect").value = m; }
-    if (gf) document.getElementById("quizGroupFilter").value = gf;
-    if (pf) document.getElementById("quizPosFilter").value = pf;
-  }
-}
-
-// 퀴즈 실행 로직
-const quizAnswer = document.getElementById("quizAnswer");
-quizAnswer.addEventListener("compositionstart", () => isComposing = true);
-quizAnswer.addEventListener("compositionend", () => isComposing = false);
-quizAnswer.addEventListener("keydown", e => {
+// 퀴즈 
+const quizAns = document.getElementById("quizAnswer");
+quizAns.addEventListener("compositionstart", () => isComposing = true);
+quizAns.addEventListener("compositionend", () => isComposing = false);
+quizAns.addEventListener("keydown", e => {
   if (e.key !== "Enter" || isComposing) return;
-  const current = quizQueue[quizIndex];
-  if (!current) return;
-  const correct = quizMode === "ko-jp" ? current.jp : current.ko;
-  if (quizAnswer.value.trim() === correct) {
-    document.getElementById("quizResult").innerText = "정답!";
+  const curr = quizQueue[quizIndex];
+  if (!curr) return;
+  const correct = quizMode === "ko-jp" ? curr.jp : curr.ko;
+  
+  if (quizAns.value.trim() === correct) {
+    document.getElementById("quizResult").innerText = "정답! (正解！)";
     quizIndex++;
     setTimeout(() => { renderCurrentQuiz(); }, 600);
   } else {
+    // 틀렸을 때 failCount 증가
+    const original = words.find(w => w.ko === curr.ko && w.jp === curr.jp);
+    if (original) {
+      original.failCount = (original.failCount || 0) + 1;
+      localStorage.setItem("jpWords", JSON.stringify(words));
+    }
     document.getElementById("quizResult").innerText = `오답! 정답: ${correct}`;
   }
-  quizAnswer.value = "";
+  quizAns.value = "";
 });
 
 function startQuiz() {
   const gf = document.getElementById("quizGroupFilter").value;
   const pf = document.getElementById("quizPosFilter").value;
-  const filtered = words.filter(w => 
-    (gf === "all" || (w.group || "JLPT 5") === gf) && 
-    (pf === "all" || (w.pos || "명사") === pf)
-  );
+  const filtered = words.filter(w => (gf === "all" || (w.group || "JLPT 5") === gf) && (pf === "all" || (w.pos || "명사") === pf));
+  quizQueue = [...filtered].sort(() => Math.random() - 0.5);
+  quizIndex = 0;
+  saveQuizState();
+  renderCurrentQuiz();
+}
+
+function startFailQuiz() {
+  const filtered = words.filter(w => (w.failCount || 0) > 0);
+  if (!filtered.length) { alert("틀린 단어가 없습니다! (すばらしい！)"); return; }
   quizQueue = [...filtered].sort(() => Math.random() - 0.5);
   quizIndex = 0;
   saveQuizState();
@@ -460,36 +438,29 @@ function renderCurrentQuiz(reset=true) {
   const qBox = document.getElementById("quizQuestion");
   const pBox = document.getElementById("quizProgress");
   const rBox = document.getElementById("quizResult");
-  if (!quizQueue.length) {
-    qBox.innerText = "조건에 맞는 단어가 없습니다";
-    pBox.innerText = "0 / 0";
-    return;
-  }
-  if (quizIndex >= quizQueue.length) {
-    qBox.innerText = "🎉 모든 문제를 풀었습니다!";
-    pBox.innerText = `${quizQueue.length} / ${quizQueue.length}`;
-    return;
-  }
-  const current = quizQueue[quizIndex];
-  qBox.innerText = quizMode === "ko-jp" ? current.ko : current.jp;
+  if (!quizQueue.length) { qBox.innerText = "단어를 추가하세요"; pBox.innerText = "0 / 0"; return; }
+  if (quizIndex >= quizQueue.length) { qBox.innerText = "퀴즈 완료! 🎉"; pBox.innerText = `${quizQueue.length}/${quizQueue.length}`; return; }
+  const curr = quizQueue[quizIndex];
+  qBox.innerText = quizMode === "ko-jp" ? curr.ko : curr.jp;
   pBox.innerText = `진행: ${quizIndex + 1} / ${quizQueue.length}`;
-  if (reset) { rBox.innerText = ""; quizAnswer.value = ""; }
+  if (reset) { rBox.innerText = ""; quizAns.value = ""; }
   saveQuizState();
 }
 
-// 일괄 처리 로직
-function toggleAllVisibleChecks(status) {
-  document.querySelectorAll(".word-checker").forEach(chk => chk.checked = status);
-  updateBatchBar();
+function saveQuizState() {
+  localStorage.setItem("quizQueue", JSON.stringify(quizQueue));
+  localStorage.setItem("quizIndex", quizIndex);
 }
+
+// 일괄 처리 
+function toggleAllVisibleChecks(s) { document.querySelectorAll(".word-checker").forEach(c => c.checked = s); updateBatchBar(); }
 
 function handleCheck(e, cb) {
   if (e.shiftKey && lastChecked) {
-    let inBetween = false;
-    const checkers = Array.from(document.querySelectorAll(".word-checker"));
-    checkers.forEach(c => {
-      if (c === cb || c === lastChecked) inBetween = !inBetween;
-      if (inBetween) c.checked = lastChecked.checked;
+    let inB = false;
+    document.querySelectorAll(".word-checker").forEach(c => {
+      if (c === cb || c === lastChecked) inB = !inB;
+      if (inB) c.checked = lastChecked.checked;
     });
   }
   lastChecked = cb;
@@ -497,16 +468,15 @@ function handleCheck(e, cb) {
 }
 
 function updateBatchBar() {
-  const count = document.querySelectorAll(".word-checker:checked").length;
-  document.getElementById("batchEditBar").style.display = count > 0 ? "block" : "none";
+  const cnt = document.querySelectorAll(".word-checker:checked").length;
+  document.getElementById("batchEditBar").style.display = cnt > 0 ? "block" : "none";
 }
 
 function applyBatchEdit() {
   const tg = document.getElementById("batchGroup").value;
   const tp = document.getElementById("batchPos").value;
-  const checkers = document.querySelectorAll(".word-checker:checked");
-  checkers.forEach(chk => {
-    const idx = parseInt(chk.dataset.index, 10);
+  document.querySelectorAll(".word-checker:checked").forEach(c => {
+    const idx = parseInt(c.dataset.index, 10);
     if (tg) words[idx].group = tg;
     if (tp) words[idx].pos = tp;
   });
@@ -516,10 +486,10 @@ function applyBatchEdit() {
 }
 
 function deleteBatchWords() {
-  const checkers = document.querySelectorAll(".word-checker:checked");
-  if (!confirm(`${checkers.length}개 단어를 삭제할까요?`)) return;
-  const indices = Array.from(checkers).map(c => parseInt(c.dataset.index, 10)).sort((a,b)=>b-a);
-  indices.forEach(idx => words.splice(idx, 1));
+  const checks = document.querySelectorAll(".word-checker:checked");
+  if (!confirm(`${checks.length}개 삭제할까요?`)) return;
+  const idxs = Array.from(checks).map(c => parseInt(c.dataset.index, 10)).sort((a,b)=>b-a);
+  idxs.forEach(idx => words.splice(idx, 1));
   localStorage.setItem("jpWords", JSON.stringify(words));
   renderList();
   startQuiz();
@@ -533,12 +503,25 @@ function exportWords() {
   a.click();
 }
 
-// 초기 실행
-document.getElementById("quizModeSelect").addEventListener("change", (e) => {
-  quizMode = e.target.value;
-  renderCurrentQuiz(false);
+const fileInput = document.getElementById("fileInput");
+fileInput.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      words = JSON.parse(reader.result);
+      localStorage.setItem("jpWords", JSON.stringify(words));
+      renderList(); startQuiz(); alert("불러오기 완료");
+    } catch { alert("파일 오류"); }
+  };
+  reader.readAsText(file);
 });
-loadQuizState();
+
+document.getElementById("quizModeSelect").addEventListener("change", (e) => { quizMode = e.target.value; renderCurrentQuiz(false); });
+
+// 초기 로드
+if (words.length > 0) { renderList(); startQuiz(); }
 </script>
 </body>
 </html>
