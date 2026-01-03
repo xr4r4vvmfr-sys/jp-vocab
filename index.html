@@ -185,11 +185,6 @@ textarea { min-height: 140px; resize: none; }
       <div class="divider"></div>
 
       <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-<input type="text" id="wordSearch" onkeyup="renderList()" placeholder="🔍 단어 또는 뜻 검색" style="background: #efeff4; border: none; border-radius: 10px; padding: 12px 15px; margin-bottom: 15px; width: 100%; font-size: 16px; outline: none; -webkit-appearance: none;">
-
-<div style="display: flex; gap: 10px; margin-bottom: 10px;">
-  <select id="listGroupFilter" onchange="renderList()">
-        
         <select id="listGroupFilter" onchange="renderList()" style="flex: 1; border-radius: 8px; border: 1px solid var(--divider); padding: 8px;">
           <option value="all">전체 리스트 보기</option>
         </select>
@@ -350,17 +345,6 @@ function renderList() {
   const listContainer = document.getElementById("wordList");
   const gf = document.getElementById("listGroupFilter").value;
   const pf = document.getElementById("listPosFilter").value;
-const searchInput = document.getElementById("wordSearch");
-  const searchTerm = searchInput ? searchInput.value.toLowerCase() : "";
-
-  listContainer.innerHTML = "";
-  
-  words.forEach((w, i) => {
-    // 추가할 코드: 검색어와 맞지 않으면 건너뛰기
-    const matchesSearch = w.ko.toLowerCase().includes(searchTerm) || w.jp.toLowerCase().includes(searchTerm);
-    if (!matchesSearch) return;
-
-  
   listContainer.innerHTML = "";
   updateListGroupFilter();
 
@@ -601,9 +585,5 @@ document.getElementById("quizModeSelect").addEventListener("change", (e) => { qu
 // 초기 로드
 if (words.length > 0) { renderList(); renderCurrentQuiz(false); }
 </script>
-  <div id="scrollButtons" style="position: fixed; bottom: 80px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000;">
-    <div onclick="window.scrollTo({top: 0, behavior: 'smooth'})" style="width: 44px; height: 44px; background: #007aff; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-weight: bold; cursor: pointer;">↑</div>
-    <div onclick="window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'})" style="width: 44px; height: 44px; background: #007aff; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-weight: bold; cursor: pointer;">↓</div>
-  </div>
 </body>
 </html>
