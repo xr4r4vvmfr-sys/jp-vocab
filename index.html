@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+
+
+<link rel="manifest" href="manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <script>
+    // 앱으로 설치 가능하게 등록하는 코드
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</head>
+
+<meta charset="UTF-8">
+<title>Japanese Vocabulary - Final</title>
+
+<style>
+:root {
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --divider: #e5e5ea;
+  --text: #1c1c1e;
+  --secondary: #6e6e73;
+  --accent: #007aff;
+}
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px;
+  overflow-x: hidden; 
+  width: 100vw; 
+}
+
+.app { width: 100%; max-width: 420px; }
+
+.header { text-align: center; margin-bottom: 20px; }
+.header h1 { font-size: 22px; font-weight: 600; margin: 0; }
+
+.tabs {
+  display: flex;
+  background: var(--card);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.05);
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--secondary);
+  cursor: pointer;
+  border-radius: 8px;
+}
+.tab.active {
+  background: var(--bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04);
+}
+
+.section { display: none; }
+.section.active { display: block; }
+
+textarea, input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  padding: 12px 0;
+  outline: none;
+}
+textarea { min-height: 140px; resize: none; }
+
+.divider { height: 1px; background: var(--divider); margin: 12px 0; }
+
+.button {
+  text-align: center;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.word-item {
+  display: grid;
+  grid-template-columns: 30px 1fr 1fr 35px; 
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.word-item input[type="text"] {
+  width: 100%;
+  padding: 8px 6px;
+  background: #f1f1f7;
+  border-radius: 6px;
+  font-size: 14px;
+  border: 1px solid transparent;
+  text-align: center;
+}
+
+.word-item input:focus {
+  background: #ffffff;
+  border: 1px solid var(--accent);
+}
+
+.word-item button {
+  background: #ffe5e5;
+  border: none;
+  color: #ff3b30;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.quiz-question { text-align: center; font-size: 24px; font-weight: 600; margin: 20px 0; }
+.quiz-input { text-align: center; font-size: 18px; }
+.result { text-align: center; font-size: 14px; margin-top: 12px; height: 1.2em; }
+.progress { text-align: center; font-size: 12px; margin-top: 6px; color: var(--secondary); }
+
+.select-container { display: flex; justify-content: center; margin-bottom: 12px; }
+.select-container select {
+  border-radius: 8px;
+  border: 1px solid var(--divider);
+  padding: 8px 10px;
+  font-size: 14px;
+  background: var(--card);
+}
+
+.secondary-button {
+  background: #efeff4;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  width: fit-content;
+  margin: 10px auto 0;
+  transition: background 0.2s;
+}
+
+.secondary-button:active { background: #e5e5ea; }
+</style>
+</head>
+
+<body>
+<div class="app">
+  <div class="header"><h1>Japanese Vocabulary</h1></div>
+
+  <div class="tabs">
+    <div class="tab" data-tab="add">추가</div>
+    <div class="tab" data-tab="list">리스트</div>
+    <div class="tab active" data-tab="quiz">퀴즈</div>
+  </div>
+
+  <div class="section" id="add">
+    <div class="card">
+      <textarea id="bulkInput" placeholder="먹다 = 食べる&#10;보다 / 見る"></textarea>
+      <div class="divider"></div>
+      <div class="button" onclick="addBulkWords()">단어 추가</div>
+    </div>
+  </div>
+
+  <div class="section" id="list">
+    <div class="card">
+      <div class="button" onclick="exportWords()">단어 파일로 저장</div>
+      <div class="button" onclick="fileInput.click()">단어 파일 불러오기</div>
+      <input type="file" id="fileInput" accept=".json" style="display:none">
+      <div class="divider"></div>
+
+      <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <select id="listGroupFilter" onchange="renderList()" style="flex: 1; border-radius: 8px; border: 1px solid var(--divider); padding: 8px;">
+          <option value="all">전체 리스트 보기</option>
+        </select>
+        <select id="listPosFilter" onchange="renderList()" style="flex: 1; border-radius: 8px; border: 1px solid var(--divider); padding: 8px;">
+          <option value="all">모든 품사</option>
+          <option value="명사">명사</option>
+          <option value="동사">동사</option>
+          <option value="형용사">형용사</option>
+          <option value="부사">부사</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px;">
+        <div style="font-size: 13px; color: var(--accent); cursor: pointer; font-weight: 600;" onclick="toggleAllVisibleChecks(true)">전체 선택</div>
+        <div style="font-size: 13px; color: var(--secondary); cursor: pointer;" onclick="toggleAllVisibleChecks(false)">선택 해제</div>
+      </div>
+
+      <div id="batchEditBar" style="display: none; background: #f2f2f7; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid var(--divider);">
+        <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--secondary);">선택 항목 일괄 변경:</div>
+        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+          <select id="batchGroup" style="flex: 1; padding: 5px; font-size: 12px;">
+            <option value="">레벨 선택</option>
+            <option value="JLPT 5">JLPT 5</option>
+            <option value="JLPT 4">JLPT 4</option>
+            <option value="JLPT 3">JLPT 3</option>
+            <option value="JLPT 2">JLPT 2</option>
+            <option value="JLPT 1">JLPT 1</option>
+          </select>
+          <select id="batchPos" style="flex: 1; padding: 5px; font-size: 12px;">
+            <option value="">품사 선택</option>
+            <option value="명사">명사</option>
+            <option value="동사">동사</option>
+            <option value="형용사">형용사</option>
+            <option value="부사">부사</option>
+          </select>
+          <div style="display: flex; gap: 4px; width: 100%; margin-top: 8px;">
+            <div class="secondary-button" onclick="applyBatchEdit()" style="flex: 1; margin: 0;">적용</div>
+            <div class="secondary-button" onclick="deleteBatchWords()" style="flex: 1; margin: 0; background: #ffe5e5; color: #ff3b30; border: 1px solid #ff3b30;">삭제</div>
+            <div class="secondary-button" onclick="toggleAllVisibleChecks(false)" style="flex: 1; margin: 0; background: white; border: 1px solid var(--divider);">취소</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="wordList"></div>
+    </div>
+  </div>
+
+  <div class="section active" id="quiz">
+    <div class="card">
+      <div class="select-container" style="flex-direction: column; gap: 8px;">
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <select id="quizGroupFilter" onchange="startQuiz()" style="flex: 1;">
+            <option value="all">모든 레벨</option>
+            <option value="JLPT 5">JLPT 5</option>
+            <option value="JLPT 4">JLPT 4</option>
+            <option value="JLPT 3">JLPT 3</option>
+            <option value="JLPT 2">JLPT 2</option>
+            <option value="JLPT 1">JLPT 1</option>
+          </select>
+          <select id="quizPosFilter" onchange="startQuiz()" style="flex: 1;">
+            <option value="all">모든 품사</option>
+            <option value="명사">명사</option>
+            <option value="동사">동사</option>
+            <option value="형용사">형용사</option>
+            <option value="부사">부사</option>
+          </select>
+        </div>
+        <select id="quizModeSelect">
+          <option value="ko-jp">한국어 → 일본어</option>
+          <option value="jp-ko">일본어 → 한국어</option>
+        </select>
+      </div>
+      <div class="quiz-question" id="quizQuestion"></div>
+      <input class="quiz-input" id="quizAnswer" placeholder="일본어 입력">
+      <div class="result" id="quizResult"></div>
+      <div class="progress" id="quizProgress"></div>
+      <div class="divider"></div>
+      <div class="secondary-button" onclick="startQuiz()">↻ 퀴즈 새로 시작</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let words = JSON.parse(localStorage.getItem("jpWords")) || [];
+let quizQueue = [];
+let quizIndex = 0;
+let quizMode = "ko-jp";
+let isComposing = false;
+let lastChecked = null;
+
+// 탭 전환
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab).classList.add("active");
+
+    if (tab.dataset.tab === "list") renderList();
+    if (tab.dataset.tab === "quiz") {
+      if (!quizQueue.length) startQuiz();
+      else renderCurrentQuiz(false);
+    }
+  });
+});
+
+// 단어 추가
+function addBulkWords() {
+  const bulkInput = document.getElementById("bulkInput");
+  const lines = bulkInput.value.split("\n");
+  let added = 0;
+
+  lines.forEach(line => {
+    const clean = line.trim();
+    if (!clean) return;
+    const parts = clean.includes("=") ? clean.split("=") : clean.split("/");
+    if (parts.length < 2) return;
+
+    const ko = parts[0].trim();
+    const jp = parts[1].trim();
+    if (ko && jp) {
+      words.push({ ko, jp, group: "JLPT 5", pos: "명사" });
+      added++;
+    }
+  });
+
+  if (added) {
+    localStorage.setItem("jpWords", JSON.stringify(words));
+    bulkInput.value = "";
+    alert(`${added}개 단어가 추가되었습니다.`);
+    renderList();
+    startQuiz();
+  }
+}
+
+// 리스트 렌더링
+function renderList() {
+  const listContainer = document.getElementById("wordList");
+  const groupFilter = document.getElementById("listGroupFilter").value;
+  const posFilter = document.getElementById("listPosFilter").value;
+  listContainer.innerHTML = "";
+  updateListGroupFilter();
+
+  words.forEach((w, i) => {
+    const matchGroup = (groupFilter === "all") || (w.group || "JLPT 5") === groupFilter;
+    const matchPos = (posFilter === "all") || (w.pos || "명사") === posFilter;
+    if (!matchGroup || !matchPos) return;
+
+    const div = document.createElement("div");
+    div.className = "word-item";
+    div.innerHTML = `
+      <input type="checkbox" class="word-checker" data-index="${i}" onclick="handleCheck(event, this)">
+      <div style="grid-column: span 3; display: flex; gap: 10px;">
+        <select style="font-size: 11px; font-weight: 600; color: var(--accent); border:none; background:none;" onchange="editWord(${i}, 'group', this.value)">
+          <option value="JLPT 5" ${w.group==='JLPT 5'?'selected':''}>JLPT 5</option>
+          <option value="JLPT 4" ${w.group==='JLPT 4'?'selected':''}>JLPT 4</option>
+          <option value="JLPT 3" ${w.group==='JLPT 3'?'selected':''}>JLPT 3</option>
+          <option value="JLPT 2" ${w.group==='JLPT 2'?'selected':''}>JLPT 2</option>
+          <option value="JLPT 1" ${w.group==='JLPT 1'?'selected':''}>JLPT 1</option>
+        </select>
+        <select style="font-size: 11px; font-weight: 600; color: #5856d6; border:none; background:none;" onchange="editWord(${i}, 'pos', this.value)">
+          <option value="명사" ${w.pos==='명사'?'selected':''}>명사</option>
+          <option value="동사" ${w.pos==='동사'?'selected':''}>동사</option>
+          <option value="형용사" ${w.pos==='형용사'?'selected':''}>형용사</option>
+          <option value="부사" ${w.pos==='부사'?'selected':''}>부사</option>
+        </select>
+      </div>
+      <div></div>
+      <input type="text" value="${w.ko}" onchange="editWord(${i}, 'ko', this.value)">
+      <input type="text" value="${w.jp}" onchange="editWord(${i}, 'jp', this.value)">
+      <button onclick="deleteWord(${i})">−</button>
+    `;
+    listContainer.appendChild(div);
+    const d = document.createElement("div");
+    d.className = "divider";
+    listContainer.appendChild(d);
+  });
+  updateBatchBar();
+}
+
+function updateListGroupFilter() {
+  const filterSelect = document.getElementById("listGroupFilter");
+  const current = filterSelect.value;
+  const groups = ["JLPT 5", "JLPT 4", "JLPT 3", "JLPT 2", "JLPT 1"];
+  filterSelect.innerHTML = '<option value="all">전체 리스트 보기</option>';
+  groups.forEach(g => {
+    const opt = document.createElement("option");
+    opt.value = g; opt.innerText = g;
+    if (g === current) opt.selected = true;
+    filterSelect.appendChild(opt);
+  });
+}
+
+function editWord(i, key, val) {
+  words[i][key] = val;
+  localStorage.setItem("jpWords", JSON.stringify(words));
+}
+
+function deleteWord(i) {
+  if(confirm("이 단어를 삭제할까요?")) {
+    words.splice(i, 1);
+    localStorage.setItem("jpWords", JSON.stringify(words));
+    renderList();
+    startQuiz();
+  }
+}
+
+// 퀴즈 상태 관리
+function saveQuizState() {
+  localStorage.setItem("quizQueue", JSON.stringify(quizQueue));
+  localStorage.setItem("quizIndex", quizIndex);
+  localStorage.setItem("quizMode", quizMode);
+  localStorage.setItem("quizGroupFilter", document.getElementById("quizGroupFilter").value);
+  localStorage.setItem("quizPosFilter", document.getElementById("quizPosFilter").value);
+}
+
+function loadQuizState() {
+  const q = localStorage.getItem("quizQueue");
+  const i = localStorage.getItem("quizIndex");
+  const m = localStorage.getItem("quizMode");
+  const gf = localStorage.getItem("quizGroupFilter");
+  const pf = localStorage.getItem("quizPosFilter");
+  if (q && i !== null) {
+    quizQueue = JSON.parse(q);
+    quizIndex = parseInt(i, 10);
+    if (m) { quizMode = m; document.getElementById("quizModeSelect").value = m; }
+    if (gf) document.getElementById("quizGroupFilter").value = gf;
+    if (pf) document.getElementById("quizPosFilter").value = pf;
+  }
+}
+
+// 퀴즈 실행 로직
+const quizAnswer = document.getElementById("quizAnswer");
+quizAnswer.addEventListener("compositionstart", () => isComposing = true);
+quizAnswer.addEventListener("compositionend", () => isComposing = false);
+quizAnswer.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || isComposing) return;
+  const current = quizQueue[quizIndex];
+  if (!current) return;
+  const correct = quizMode === "ko-jp" ? current.jp : current.ko;
+  if (quizAnswer.value.trim() === correct) {
+    document.getElementById("quizResult").innerText = "정답!";
+    quizIndex++;
+    setTimeout(() => { renderCurrentQuiz(); }, 600);
+  } else {
+    document.getElementById("quizResult").innerText = `오답! 정답: ${correct}`;
+  }
+  quizAnswer.value = "";
+});
+
+function startQuiz() {
+  const gf = document.getElementById("quizGroupFilter").value;
+  const pf = document.getElementById("quizPosFilter").value;
+  const filtered = words.filter(w => 
+    (gf === "all" || (w.group || "JLPT 5") === gf) && 
+    (pf === "all" || (w.pos || "명사") === pf)
+  );
+  quizQueue = [...filtered].sort(() => Math.random() - 0.5);
+  quizIndex = 0;
+  saveQuizState();
+  renderCurrentQuiz();
+}
+
+function renderCurrentQuiz(reset=true) {
+  const qBox = document.getElementById("quizQuestion");
+  const pBox = document.getElementById("quizProgress");
+  const rBox = document.getElementById("quizResult");
+  if (!quizQueue.length) {
+    qBox.innerText = "조건에 맞는 단어가 없습니다";
+    pBox.innerText = "0 / 0";
+    return;
+  }
+  if (quizIndex >= quizQueue.length) {
+    qBox.innerText = "🎉 모든 문제를 풀었습니다!";
+    pBox.innerText = `${quizQueue.length} / ${quizQueue.length}`;
+    return;
+  }
+  const current = quizQueue[quizIndex];
+  qBox.innerText = quizMode === "ko-jp" ? current.ko : current.jp;
+  pBox.innerText = `진행: ${quizIndex + 1} / ${quizQueue.length}`;
+  if (reset) { rBox.innerText = ""; quizAnswer.value = ""; }
+  saveQuizState();
+}
+
+// 일괄 처리 로직
+function toggleAllVisibleChecks(status) {
+  document.querySelectorAll(".word-checker").forEach(chk => chk.checked = status);
+  updateBatchBar();
+}
+
+function handleCheck(e, cb) {
+  if (e.shiftKey && lastChecked) {
+    let inBetween = false;
+    const checkers = Array.from(document.querySelectorAll(".word-checker"));
+    checkers.forEach(c => {
+      if (c === cb || c === lastChecked) inBetween = !inBetween;
+      if (inBetween) c.checked = lastChecked.checked;
+    });
+  }
+  lastChecked = cb;
+  updateBatchBar();
+}
+
+function updateBatchBar() {
+  const count = document.querySelectorAll(".word-checker:checked").length;
+  document.getElementById("batchEditBar").style.display = count > 0 ? "block" : "none";
+}
+
+function applyBatchEdit() {
+  const tg = document.getElementById("batchGroup").value;
+  const tp = document.getElementById("batchPos").value;
+  const checkers = document.querySelectorAll(".word-checker:checked");
+  checkers.forEach(chk => {
+    const idx = parseInt(chk.dataset.index, 10);
+    if (tg) words[idx].group = tg;
+    if (tp) words[idx].pos = tp;
+  });
+  localStorage.setItem("jpWords", JSON.stringify(words));
+  renderList();
+  alert("변경되었습니다.");
+}
+
+function deleteBatchWords() {
+  const checkers = document.querySelectorAll(".word-checker:checked");
+  if (!confirm(`${checkers.length}개 단어를 삭제할까요?`)) return;
+  const indices = Array.from(checkers).map(c => parseInt(c.dataset.index, 10)).sort((a,b)=>b-a);
+  indices.forEach(idx => words.splice(idx, 1));
+  localStorage.setItem("jpWords", JSON.stringify(words));
+  renderList();
+  startQuiz();
+}
+
+function exportWords() {
+  const blob = new Blob([JSON.stringify(words, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "jp_words.json";
+  a.click();
+}
+
+// 초기 실행
+document.getElementById("quizModeSelect").addEventListener("change", (e) => {
+  quizMode = e.target.value;
+  renderCurrentQuiz(false);
+});
+loadQuizState();
+</script>
+</body>
+</html>
