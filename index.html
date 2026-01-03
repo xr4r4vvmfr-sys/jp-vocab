@@ -540,7 +540,7 @@ fileInput.addEventListener("change", e => {
 document.getElementById("quizModeSelect").addEventListener("change", (e) => { quizMode = e.target.value; renderCurrentQuiz(false); });
 
 // 초기 로드
-if (words.length > 0) { renderList(); startQuiz(); }
+if (words.length > 0) { renderList(); renderCurrentQuiz(false); }
 </script>
 </body>
 </html>
