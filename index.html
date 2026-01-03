@@ -164,8 +164,8 @@ textarea { min-height: 140px; resize: none; }
 
   <div class="tabs">
     <div class="tab" data-tab="add">추가</div>
-    <div class="tab" data-tab="list">리스트</div>
-    <div class="tab active" data-tab="quiz">퀴즈</div>
+    <div class="tab active" data-tab="list">리스트</div>
+    <div class="tab" data-tab="quiz">퀴즈</div>
   </div>
 
   <div class="section" id="add">
@@ -176,7 +176,7 @@ textarea { min-height: 140px; resize: none; }
     </div>
   </div>
 
-  <div class="section" id="list">
+  <div class="section active" id="list">
     <div class="card">
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <div class="button" onclick="exportWords()" style="border: 1px solid var(--divider); border-radius: 10px; padding: 10px 0;">단어 파일로 저장</div>
@@ -243,7 +243,7 @@ textarea { min-height: 140px; resize: none; }
     </div>
   </div>
 
-  <div class="section active" id="quiz">
+  <div class="section" id="quiz">
     <div class="card">
       <div class="select-container" style="flex-direction: column; gap: 8px;">
         <div style="display: flex; gap: 8px; width: 100%;">
@@ -307,14 +307,12 @@ function toggleRangeMode() {
   if (!isRangeMode) firstCheckedIndex = null;
 }
 
-// 탭 전환
 document.querySelectorAll(".tab").forEach(tab => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
     tab.classList.add("active");
     document.getElementById(tab.dataset.tab).classList.add("active");
-
     if (tab.dataset.tab === "list") renderList();
     if (tab.dataset.tab === "quiz") {
       if (!quizQueue.length) startQuiz();
@@ -323,6 +321,7 @@ document.querySelectorAll(".tab").forEach(tab => {
   });
 });
 
+// 단어 추가: unshift를 사용하여 배열의 맨 앞에 추가
 function addBulkWords() {
   const bulkInput = document.getElementById("bulkInput");
   const lines = bulkInput.value.split("\n");
@@ -335,38 +334,32 @@ function addBulkWords() {
     const ko = parts[0].trim();
     const jp = parts[1].trim();
     if (ko && jp) {
-      words.push({ ko, jp, group: "JLPT 5", pos: "명사", failCount: 0 });
+      // push 대신 unshift 사용
+      words.unshift({ ko, jp, group: "JLPT 5", pos: "명사", failCount: 0 });
       added++;
     }
   });
   if (added) {
     localStorage.setItem("jpWords", JSON.stringify(words));
     bulkInput.value = "";
-    alert(`${added}개 단어가 추가되었습니다.`);
+    alert(`${added}개 단어가 맨 위에 추가되었습니다.`);
     renderList();
     startQuiz();
   }
 }
 
-// 리스트 렌더링 (검색 기능 포함)
 function renderList() {
   const listContainer = document.getElementById("wordList");
   const gf = document.getElementById("listGroupFilter").value;
   const pf = document.getElementById("listPosFilter").value;
   const searchTerm = document.getElementById("wordSearch").value.toLowerCase().trim();
-  
   listContainer.innerHTML = "";
-
   words.forEach((w, i) => {
-    // 검색 필터링
     const matchesSearch = w.ko.toLowerCase().includes(searchTerm) || w.jp.toLowerCase().includes(searchTerm);
     if (!matchesSearch) return;
-
-    // 그룹/품사 필터링
     const matchG = (gf === "all") || (w.group || "JLPT 5") === gf;
     const matchP = (pf === "all") || (w.pos || "명사") === pf;
     if (!matchG || !matchP) return;
-
     const div = document.createElement("div");
     div.className = "word-item";
     div.innerHTML = `
@@ -401,7 +394,6 @@ function renderList() {
 }
 
 function editWord(i, k, v) { words[i][k] = v; localStorage.setItem("jpWords", JSON.stringify(words)); }
-
 function deleteWord(i) {
   if(confirm("삭제할까요?")) { words.splice(i, 1); localStorage.setItem("jpWords", JSON.stringify(words)); renderList(); startQuiz(); }
 }
