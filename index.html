@@ -275,8 +275,8 @@ textarea { min-height: 140px; resize: none; }
 
 <script>
 let words = JSON.parse(localStorage.getItem("jpWords")) || [];
-let quizQueue = [];
-let quizIndex = 0;
+let quizQueue = JSON.parse(localStorage.getItem("quizQueue")) || [];
+let quizIndex = parseInt(localStorage.getItem("quizIndex")) || 0;
 let quizMode = "ko-jp";
 let isComposing = false;
 let lastChecked = null;
@@ -440,15 +440,32 @@ function renderCurrentQuiz(reset=true) {
   const qBox = document.getElementById("quizQuestion");
   const pBox = document.getElementById("quizProgress");
   const rBox = document.getElementById("quizResult");
-  if (!quizQueue.length) { qBox.innerText = "단어를 추가하세요"; pBox.innerText = "0 / 0"; return; }
-  if (quizIndex >= quizQueue.length) { qBox.innerText = "퀴즈 완료! 🎉"; pBox.innerText = `${quizQueue.length}/${quizQueue.length}`; return; }
+
+  if (!quizQueue.length) { 
+    qBox.innerText = "단어를 추가하세요"; 
+    pBox.innerText = "0 / 0"; 
+    return; 
+  }
+
+  // 퀴즈가 다 끝났는지 확인
+  if (quizIndex >= quizQueue.length) { 
+    qBox.innerText = "퀴즈 완료! 🎉"; 
+    pBox.innerText = `${quizQueue.length}/${quizQueue.length}`;
+    // 다 풀었으니 저장소 비우기
+    localStorage.removeItem("quizQueue");
+    localStorage.removeItem("quizIndex");
+    return; 
+  }
+
   const curr = quizQueue[quizIndex];
   qBox.innerText = quizMode === "ko-jp" ? curr.ko : curr.jp;
   pBox.innerText = `진행: ${quizIndex + 1} / ${quizQueue.length}`;
+  
   if (reset) { rBox.innerText = ""; quizAns.value = ""; }
+
+  // ★ 현재 상태를 저장소에 기록합니다! (껐다 켜도 기억하도록)
   saveQuizState();
 }
-
 function saveQuizState() {
   localStorage.setItem("quizQueue", JSON.stringify(quizQueue));
   localStorage.setItem("quizIndex", quizIndex);
